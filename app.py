@@ -3,15 +3,17 @@
 # Author: ablil <ablil@protonmail.com>
 # created: 2021-10-13
 
-import requests
-import shutil
-import twitter
-import reddit
+import collections
 import json
-import os
-import time
 import logging
+import os
+import shutil
 import time
+
+import requests
+
+import reddit
+import twitter
 
 
 def configure_logging():
@@ -53,6 +55,7 @@ def download_picture(url: str) -> str:
 
 def main():
     credentials = get_credentials()
+    posts = []
 
     twitter_bot = twitter.Bot(
         credentials["twitter"]["key"],
@@ -60,22 +63,23 @@ def main():
         credentials["twitter"]["token"],
         credentials["twitter"]["token_secret"],
     )
-    reddit_scrapper = reddit.RedditParser(
+    reddit_scrapper = reddit.SubredditScrapper(
         credentials["reddit"]["client_id"], credentials["reddit"]["secret"]
     )
 
-    posts = reddit_scrapper.fetch_hot_posts()
+    while True:
+        reddit_scrapper.fetch_hot_posts(posts)
 
-    for post in posts:
-        post_id, post_content, post_image = post
-        image_filename = download_picture(post_image)
-        if image_filename:
-            twitter_bot.post(post_content, image_filename)
+        while len(posts):
+            post_id, post_content, post_image = posts.pop(0)
+            image_filename = download_picture(post_image)
+            if image_filename:
+                twitter_bot.post(post_content, image_filename)
 
-            os.remove(image_filename)
-            logging.info("removed {}".format(image_filename))
+                os.remove(image_filename)
+                logging.info("removed {}".format(image_filename))
 
-        time.sleep(30 * 60)  # sleep for 30 min before posting again
+            time.sleep(60)  # sleep for 30 min before posting again
 
 
 if __name__ == "__main__":

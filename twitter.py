@@ -3,10 +3,10 @@
 # Author: ablil <ablil@protonmail.com>
 # created: 2021-10-13
 
-import os
-from typing import List
-import tweepy
 import logging
+import os
+
+import tweepy
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
