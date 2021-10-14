@@ -3,13 +3,11 @@
 # Author: ablil <ablil@protonmail.com>
 # created: 2021-10-13
 
-import logging
 from typing import Deque, List
 
 import praw
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+from logger import logger
 
 
 class SubredditScrapper:
@@ -41,11 +39,11 @@ class SubredditScrapper:
                     queue.append((post.id, post.title, post.url))
                     counter += 1
 
-            logging.info("added {} new posts from reddit".format(counter))
+            logger.info("added {} new posts from reddit".format(counter))
 
         except Exception as e:
-            logging.error("Failed to get reddit posts")
-            logging.error(e)
+            logger.error("Failed to get reddit posts")
+            logger.error(e)
 
     def __fetch_posts_with_media(self, queue):
         posts = list(
@@ -69,6 +67,6 @@ class SubredditScrapper:
             self.__fetch_posts_with_media(queue=[])
             logger.info("Reddit api authenticated")
         except Exception as e:
-            logging.critical("Reddit authentication failed")
-            logging.critical("error msg: {}".format(e))
+            logger.critical("Reddit authentication failed")
+            logger.critical("error msg: {}".format(e))
             exit(1)

@@ -3,13 +3,11 @@
 # Author: ablil <ablil@protonmail.com>
 # created: 2021-10-13
 
-import logging
 import os
 
 import tweepy
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+from logger import logger
 
 
 class Bot:
@@ -41,7 +39,7 @@ class Bot:
 
         media: tweepy.models.Media = self.api.media_upload(filename)
         media_id = media.media_id_string
-        logging.info("uploaded media, id: {}".format(media_id))
+        logger.info("uploaded media, id: {}".format(media_id))
 
         tweet: tweepy.models.Status = self.api.update_status(
             content, media_ids=[media_id]
@@ -52,8 +50,8 @@ class Bot:
     def __verify_auth(self):
         try:
             self.api.verify_credentials()
-            logging.info("Twitter api authenticated")
+            logger.info("Twitter api authenticated")
         except tweepy.errors.Unauthorized as e:
-            logging.critical("Twitter authentication failed")
-            logging.critical("error msg: {}".format(e))
+            logger.critical("Twitter authentication failed")
+            logger.critical("error msg: {}".format(e))
             exit(1)
