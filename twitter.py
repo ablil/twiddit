@@ -31,8 +31,12 @@ class Bot:
             logger.warn("tweet length is excedded: {}".format(len(content)))
             logger.warn("tweet content is trimmed")
 
-        tweet: tweepy.models.Status = self.api.update_status_with_media(
-            content, filename
+        media: tweepy.models.Media = self.api.media_upload(filename)
+        media_id = media.media_id_string
+        logging.info("uploaded media, id: {}".format(media_id))
+
+        tweet: tweepy.models.Status = self.api.update_status(
+            content, media_ids=[media_id]
         )
         logger.info("tweet posted successfully")
         logger.info("tweet id: {}".format(tweet.id))
