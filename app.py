@@ -15,13 +15,28 @@ import requests
 import reddit
 import twitter
 
+import sys
 
-def configure_logging():
+
+def configure_logging(debug=False):
     if not os.path.exists("logs"):
         os.makedirs("logs")
 
     logfile = os.path.join("logs", time.strftime("%Y-%m-%d-%H-%M") + ".log")
-    logging.basicConfig(filename=logfile, filemode="a+", level=logging.INFO)
+    if debug:
+        logging.basicConfig(
+            format="%(name)s - %(levelname)s - %(message)s",
+            filemode="a+",
+            level=logging.DEBUG,
+        )
+
+    else:
+        logging.basicConfig(
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            filename=logfile,
+            filemode="a+",
+            level=logging.INFO,
+        )
 
 
 def get_credentials():
@@ -54,6 +69,8 @@ def download_picture(url: str) -> str:
 
 
 def main():
+    print("Running ...")
+    logging.info("Starting ...")
     credentials = get_credentials()
     posts = []
 
@@ -76,7 +93,11 @@ def main():
             failure += 1
 
         if failure >= 10:
-            logging.critical("Attempted to get reddit posts {} times, and got no response".format(failure))
+            logging.critical(
+                "Attempted to get reddit posts {} times, and got no response".format(
+                    failure
+                )
+            )
             exit(1)
 
         while len(posts):
@@ -92,5 +113,6 @@ def main():
 
 
 if __name__ == "__main__":
-    configure_logging()
+    print("To run in debug mode, add --debug flag")
+    configure_logging(len(sys.argv) > 1 and sys.argv[1] == '--debug')
     main()
