@@ -22,9 +22,10 @@ class SubredditScrapper:
             client_secret=client_secret,
             user_agent="Mozilla/5.0 (platform; rv:geckoversion) Gecko/geckotrail appname/appversion",
         )
-        logger.info("connected to reddit api")
 
-    def fetch_hot_posts(self, queue: List):
+        self.__verify_auth()
+
+    def run(self, queue: List):
         """extend the given queue with the latest hostest posts from subreddit
 
         Args:
@@ -32,6 +33,21 @@ class SubredditScrapper:
         """
         logger.info("started fetching hottest reddit posts")
 
+        try:
+            posts_with_media = self.__fetch_posts_with_media(queue)
+            counter = 0
+            for post in posts_with_media:
+                if post.url.endswith(".jpg"):
+                    queue.append((post.id, post.title, post.url))
+                    counter += 1
+
+            logging.info("added {} new posts from reddit".format(counter))
+
+        except Exception as e:
+            logging.error("Failed to get reddit posts")
+            logging.error(e)
+
+    def __fetch_posts_with_media(self, queue):
         posts = list(
             self.api.subreddit(SubredditScrapper.subreddit).hot(
                 limit=SubredditScrapper.posts_limit
@@ -46,10 +62,13 @@ class SubredditScrapper:
         posts_with_media = list(filter(lambda p: p.url.endswith(".jpg"), posts))
         logger.info("filterd only {} posts with media".format(len(posts_with_media)))
 
-        counter = 0
-        for post in posts_with_media:
-            if post.url.endswith(".jpg"):
-                queue.append((post.id, post.title, post.url))
-                counter += 1
+        return posts_with_media
 
-        logging.info("added {} new posts from reddit".format(counter))
+    def __verify_auth(self):
+        try:
+            self.__fetch_posts_with_media(queue=[])
+            logger.info("Reddit api authenticated")
+        except Exception as e:
+            logging.critical("Reddit authentication failed")
+            logging.critical("error msg: {}".format(e))
+            exit(1)

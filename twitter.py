@@ -17,12 +17,20 @@ class Bot:
         self.auth = tweepy.OAuthHandler(key, secret)
         self.auth.set_access_token(token_key, token_secret)
         self.api = tweepy.API(self.auth)
-        logger.info("connected to twitter api")
 
-    def post(self, content: str, filename: str):
+        self.__verify_auth()
+
+    def run(self, content: str, filename: str):
         assert os.path.exists(filename)
 
         logger.info("started posting tweet")
+        try:
+            self.__post(content, filename)
+        except Exception as e:
+            logger.error("Failed to post tweet")
+            logger.error(e)
+
+    def __post(self, content, filename):
         logger.info("tweet content: {}".format(content))
         logger.info("tweet filename: {}".format(filename))
 
@@ -40,3 +48,12 @@ class Bot:
         )
         logger.info("tweet posted successfully")
         logger.info("tweet id: {}".format(tweet.id))
+
+    def __verify_auth(self):
+        try:
+            self.api.verify_credentials()
+            logging.info("Twitter api authenticated")
+        except tweepy.errors.Unauthorized as e:
+            logging.critical("Twitter authentication failed")
+            logging.critical("error msg: {}".format(e))
+            exit(1)

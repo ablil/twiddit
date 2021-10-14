@@ -67,14 +67,23 @@ def main():
         credentials["reddit"]["client_id"], credentials["reddit"]["secret"]
     )
 
+    failure = 0
+
     while True:
-        reddit_scrapper.fetch_hot_posts(posts)
+        reddit_scrapper.run(posts)
+
+        if not len(posts):
+            failure += 1
+
+        if failure >= 10:
+            logging.critical("Attempted to get reddit posts {} times, and got no response".format(failure))
+            exit(1)
 
         while len(posts):
             post_id, post_content, post_image = posts.pop(0)
             image_filename = download_picture(post_image)
             if image_filename:
-                twitter_bot.post(post_content, image_filename)
+                twitter_bot.run(post_content, image_filename)
 
                 os.remove(image_filename)
                 logging.info("removed {}".format(image_filename))
