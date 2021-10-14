@@ -88,7 +88,7 @@ def main():
                 os.remove(image_filename)
                 logging.info("removed {}".format(image_filename))
 
-            time.sleep(60)  # sleep for 30 min before posting again
+            time.sleep(60 * 15)
 
 
 if __name__ == "__main__":
