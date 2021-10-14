@@ -68,6 +68,10 @@ def main():
 
         if not len(posts):
             failure += 1
+            logger.info(
+                "No post is available, waiting for 60 min before fetching again"
+            )
+            time.sleep(60 * 60)  # wait for 60 min until new posts are available
 
         if failure >= 10:
             logger.critical(
