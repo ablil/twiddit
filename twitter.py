@@ -11,6 +11,9 @@ from logger import logger
 
 
 class Bot:
+
+    hashtags = "\n#woooosh #reddit #memes"
+
     def __init__(self, key, secret, token_key, token_secret):
         self.auth = tweepy.OAuthHandler(key, secret)
         self.auth.set_access_token(token_key, token_secret)
@@ -32,8 +35,8 @@ class Bot:
         logger.info("tweet content: {}".format(content))
         logger.info("tweet filename: {}".format(filename))
 
-        if len(content) > 140:
-            content = content[:140]
+        if len(content) > 140 - len(Bot.hashtags):
+            content = content[: 140 - len(Bot.hashtags)]
             logger.warn("tweet length is excedded: {}".format(len(content)))
             logger.warn("tweet content is trimmed")
 
@@ -42,7 +45,7 @@ class Bot:
         logger.info("uploaded media, id: {}".format(media_id))
 
         tweet: tweepy.models.Status = self.api.update_status(
-            content, media_ids=[media_id]
+            content + Bot.hashtags, media_ids=[media_id]
         )
         logger.info("tweet posted successfully")
         logger.info("tweet id: {}".format(tweet.id))
