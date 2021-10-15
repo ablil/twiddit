@@ -3,95 +3,86 @@
 # Author: ablil <ablil@protonmail.com>
 # created: 2021-10-13
 
-import collections
-import json
-import os
-import shutil
+import threading
 import time
-
-import requests
+from typing import List
 
 import reddit
 import twitter
+from branding import SelfBrand
 from logger import logger
 
 
-def get_credentials():
-    if not os.path.exists("./credentials.json"):
-        logger.critical("credentials.json file not found")
-        exit(1)
-
-    with open("./credentials.json") as f:
-        return json.load(f)
-
-
-def download_picture(url: str) -> str:
-    """download picture and return filename"""
-    logger.info("started downloading image from url: {}".format(url))
-    r = requests.get(url, stream=True)
-
-    if r.status_code == 200:
-        r.raw.decode_content = True
-
-        filename = os.path.join("/tmp", url.split("/")[-1])
-        with open(filename, "wb") as f:
-            shutil.copyfileobj(r.raw, f)
-
-        logger.info("downloaded picture: {}".format(filename))
-        return filename
-    else:
-        logger.error("download failed with http status code: {}".format(r.status_code))
-
-    return None
-
-
-def main():
-    print("Running ...")
-    logger.info("Starting ...")
-    credentials = get_credentials()
-    posts = []
-
-    twitter_bot = twitter.Bot(
-        credentials["twitter"]["key"],
-        credentials["twitter"]["key_secret"],
-        credentials["twitter"]["token"],
-        credentials["twitter"]["token_secret"],
+def run_bot():
+    twitter_credentials = twitter.TwitterCredentials.read_from_json_file(
+        "credentials.json"
     )
-    reddit_scrapper = reddit.SubredditScrapper(
-        credentials["reddit"]["client_id"], credentials["reddit"]["secret"]
+    twitter_bot = twitter.TwitterBot(twitter_credentials)
+
+    reddit_credentials = reddit.RedditCredentials.read_from_json_file(
+        "credentials.json"
     )
+    reddit_scrapper = reddit.SubredditScrapper(reddit_credentials)
 
-    failure = 0
+    posts: List[reddit.RedditPost] = []
 
-    while True:
-        reddit_scrapper.run(posts)
+    failures_counter = 0
 
+    while failures_counter < 3:
+
+        posts.extend(reddit_scrapper.fetch_posts())
+
+        # re-fetch when no posts is available
         if not len(posts):
-            failure += 1
-            logger.info(
-                "No post is available, waiting for 60 min before fetching again"
-            )
-            time.sleep(60 * 60)  # wait for 60 min until new posts are available
+            logger.warning("increase failure counter")
+            failures_counter += 1
 
-        if failure >= 10:
-            logger.critical(
-                "Attempted to get reddit posts {} times, and got no response".format(
-                    failure
-                )
-            )
-            exit(1)
+            logger.warning("Sleep for 15 min before fetching again")
+            time.sleep(60 * 15)
+            continue
+        else:
+            logger.info("reset failure counter")
+            failures_counter = 0
 
+        # share posts
         while len(posts):
-            post_id, post_content, post_image = posts.pop(0)
-            image_filename = download_picture(post_image)
-            if image_filename:
-                twitter_bot.run(post_content, image_filename)
+            post = posts.pop(0)
+            media_filename = post.download_media()
 
-                os.remove(image_filename)
-                logger.info("removed {}".format(image_filename))
+            twitter_bot.tweet(post.content, media_filename)
 
             time.sleep(60 * 15)
 
 
+def run_branding():
+    twitter_credentials = twitter.TwitterCredentials.read_from_json_file(
+        "credentials.json"
+    )
+    branding_bot = SelfBrand(twitter_credentials)
+
+    hashtags = ["#reddit", "#memes"]
+
+    for hashtag in hashtags:
+        tweets = branding_bot.fetch_tweets_from_hashtag(hashtag, 90)
+        logger.info("Fetched {} tweets from hashtag {}".format(len(tweets), hashtag))
+
+        branding_bot.fav_tweets(tweets)
+        logger.info("Liked all tweet from hashtag {}".format(hashtag))
+
+
+def main():
+    print("Running ...")
+
+    branding_bot = threading.Thread(target=run_branding)
+    branding_bot.setDaemon(True)
+    branding_bot.start()
+
+    run_bot()
+    print("Finished")
+
+
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("Stopping ...")

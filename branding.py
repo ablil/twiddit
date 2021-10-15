@@ -9,55 +9,48 @@ from typing import List
 import tweepy
 
 from logger import logger
+from twitter import TwitterCredentials
 
 
 class SelfBrand:
+    def __init__(self, credentials: TwitterCredentials):
+        self.credentials = credentials
+        self.api = self.credentials.api
 
-    hashtags = ["#meme", "#memes", "#reddit"]
-    tweets_per_hashtag = 10
+    def fav_tweets(self, tweets_ids: List[int], interval: int = 60):
+        """like all tweets every interval in seconds
 
-    def __init__(self, key, secret, token_key, token_secret):
-        self.auth = tweepy.OAuthHandler(key, secret)
-        self.auth.set_access_token(token_key, token_secret)
-        self.api = tweepy.API(self.auth)
+        Args:
+            tweets_ids (List[int]): tweets ids
+            interval (int, optional): intervale between like in seconds. Defaults to 60.
+        """
 
-    def run(self):
-         while True:
+        i = 0
+        while i < len(tweets_ids):
             try:
-                for hashtag in SelfBrand.hashtags:
-                    tweets = self.__fetch_some_tweets(hashtag)
-                    logger.info(
-                        "Fetched {} tweets with hashtag {}".format(len(tweets), hashtag)
-                    )
+                self.api.create_favorite(tweets_ids[i])
+            except tweepy.TwitterServerError as e:
+                logger.error(e)
 
-                    self.__like_tweets(tweets)
-                    logger.info(
-                        "liked all {} tweets from hashtag {}".format(
-                            len(tweets), hashtag
-                        )
-                    )
+            i += 1
+            time.sleep(interval)
 
-            except Exception as e:
-                logger.warning("could not continue execution of self-branding")
-                logger.warning(e)
+    def fetch_tweets_from_hashtag(self, hashtag: str, limit: int = 50) -> List[int]:
+        """Fetch recent tweet from given hashtag
 
-            finally:
-                time.sleep(60 * 5)
+        Args:
+            hashtag (str): twitter hashtag
 
-    def __fetch_some_tweets(self, hashtag) -> List[tweepy.models.Status]:
-        tweets = tweepy.Cursor(self.api.search_tweets, q=hashtag, lang="en").items(
-            SelfBrand.tweets_per_hashtag
-        )
+        Returns:
+            List[int]: list of tweets ids
+        """
+        if not hashtag.startswith("#"):
+            hashtag = "#" + hashtag
 
-        return list(tweets)
+        if limit > 100 or limit < 10:
+            limit = 50
 
-    def __like_tweets(self, tweets: tweepy.models.Status):
-        failures = 0
-        for tweet in tweets:
-            try:
-                self.api.create_favorite(tweet.id)
-            except Exception as e:
-                failures += 1
-
-        if failures:
-            logger.warning("Some tweets are already liked !!!")
+        tweets = tweepy.Cursor(self.api.search_tweets, q=hashtag).items(limit)
+        unliked = filter(lambda t: not t.favorited, tweets)
+        ids = map(lambda t: t.id, unliked)
+        return list(ids)

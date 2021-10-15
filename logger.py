@@ -26,7 +26,13 @@ logger.addHandler(file)
 # log to stdout
 stream = logging.StreamHandler()
 stream.setLevel(loglevel)
-stream.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+stream.setFormatter(
+    logging.Formatter("%(asctime)s %(module)s %(funcName)s %(levelname)s %(message)s")
+)
 logger.addHandler(stream)
 
-coloredlogs.install(level=loglevel, logger=logger)
+coloredlogs.install(
+    level=loglevel,
+    logger=logger,
+    fmt="%(asctime)s:%(levelname)s:%(module)s - %(message)s",
+)
