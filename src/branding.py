@@ -52,7 +52,7 @@ class SelfBrand:
         if not hashtag.startswith("#"):
             hashtag = "#" + hashtag
 
-        if limit > 100 or limit < 10:
+        if not limit or limit > 100 or limit < 10:
             limit = 50
 
         tweets = tweepy.Cursor(self.api.search_tweets, q=hashtag).items(limit)

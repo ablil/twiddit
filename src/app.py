@@ -10,18 +10,17 @@ from typing import List
 import reddit
 import twitter
 from branding import SelfBrand
+from config import config
 from logger import logger
 
 
 def run_bot():
-    twitter_credentials = twitter.TwitterCredentials.read_from_json_file(
-        "credentials.json"
+    twitter_credentials = twitter.TwitterCredentials.read_from_config()
+    twitter_bot = twitter.TwitterBot(
+        twitter_credentials, config["bot"]["hashtags"]
     )
-    twitter_bot = twitter.TwitterBot(twitter_credentials)
 
-    reddit_credentials = reddit.RedditCredentials.read_from_json_file(
-        "credentials.json"
-    )
+    reddit_credentials = reddit.RedditCredentials.read_from_config()
     reddit_scrapper = reddit.SubredditScrapper(reddit_credentials)
 
     posts: List[reddit.RedditPost] = []
@@ -30,7 +29,7 @@ def run_bot():
 
     while failures_counter < 3:
 
-        posts.extend(reddit_scrapper.fetch_posts())
+        posts.extend(reddit_scrapper.fetch_posts(config["bot"]["subreddit"]))
 
         # re-fetch when no posts is available
         if not len(posts):
@@ -51,20 +50,21 @@ def run_bot():
 
             twitter_bot.tweet(post.content, media_filename)
 
-            time.sleep(60 * 15)
+            time.sleep(config["bot"]["time_to_post"])
 
 
 def run_branding():
-    twitter_credentials = twitter.TwitterCredentials.read_from_json_file(
-        "credentials.json"
-    )
+    twitter_credentials = twitter.TwitterCredentials.read_from_config()
     branding_bot = SelfBrand(twitter_credentials)
 
-    hashtags = ["#reddit", "#memes"]
+    hashtags = config["branding"]["hashtags"]
+    interval = config["branding"]["time_to_like"]
 
     for hashtag in hashtags:
-        tweets = branding_bot.fetch_tweets_from_hashtag(hashtag, 90)
-        logger.info("Fetched {} tweets from hashtag {}".format(len(tweets), hashtag))
+        tweets = branding_bot.fetch_tweets_from_hashtag(hashtag, interval)
+        logger.info(
+            "Fetched {} tweets from hashtag {}".format(len(tweets), hashtag)
+        )
 
         branding_bot.fav_tweets(tweets)
         logger.info("Liked all tweet from hashtag {}".format(hashtag))

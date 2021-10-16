@@ -3,7 +3,7 @@
 # Author: ablil <ablil@protonmail.com>
 # created: 2021-10-13
 
-import json
+from config import config
 import os
 import requests
 import shutil
@@ -34,19 +34,15 @@ class RedditCredentials:
             exit(1)
 
     @staticmethod
-    def read_from_json_file(filename):
+    def read_from_config():
         try:
-            assert filename and len(filename)
+            assert config["credentials"]["reddit"]["client_id"]
+            assert config["credentials"]["reddit"]["client_secret"]
 
-            with open(filename) as f:
-                creds = json.load(f)
-
-                assert creds["reddit"]["client_id"]
-                assert creds["reddit"]["client_secret"]
-
-                return RedditCredentials(
-                    creds["reddit"]["client_id"], creds["reddit"]["client_secret"]
-                )
+            return RedditCredentials(
+                config["credentials"]["reddit"]["client_id"],
+                config["credentials"]["reddit"]["client_secret"],
+            )
         except AssertionError as e:
             logger.critical(e)
             exit(1)
@@ -82,7 +78,9 @@ class RedditPost:
 
         else:
             logger.error(
-                "download failed with http status code: {}".format(r.status_code)
+                "download failed with http status code: {}".format(
+                    r.status_code
+                )
             )
 
         return self.filename
@@ -102,13 +100,19 @@ class SubredditScrapper:
     ) -> List[RedditPost]:
 
         try:
-            logger.info("Started fetching {} posts from r/{}".format(limit, subreddit))
+            logger.info(
+                "Started fetching {} posts from r/{}".format(limit, subreddit)
+            )
 
             posts: List[RedditPost] = self.__fetch_posts(subreddit, limit)
             logger.info("Fetched {} posts".format(len(posts)))
 
-            posts_with_media: List[RedditPost] = self.__filter_posts_with_media(posts)
-            logger.info("Filterd {} posts with media".format(len(posts_with_media)))
+            posts_with_media: List[
+                RedditPost
+            ] = self.__filter_posts_with_media(posts)
+            logger.info(
+                "Filterd {} posts with media".format(len(posts_with_media))
+            )
 
             return posts_with_media
         except AssertionError as e:
@@ -126,7 +130,9 @@ class SubredditScrapper:
         res = map(lambda p: RedditPost(p.id, p.title, p.url), res)
         return list(res)
 
-    def __filter_posts_with_media(self, posts: List[RedditPost]) -> List[RedditPost]:
+    def __filter_posts_with_media(
+        self, posts: List[RedditPost]
+    ) -> List[RedditPost]:
         assert posts and len(posts)
 
         res = filter(lambda p: p.url.endswith(".jpg"), posts)

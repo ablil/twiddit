@@ -3,7 +3,7 @@
 # Author: ablil <ablil@protonmail.com>
 # created: 2021-10-13
 
-import json
+from config import config
 import os
 
 import tweepy
@@ -32,24 +32,19 @@ class TwitterCredentials:
             exit(1)
 
     @staticmethod
-    def read_from_json_file(filename):
+    def read_from_config():
         try:
-            assert filename and len(filename)
+            assert config["credentials"]["twitter"]["consumer_key"]
+            assert config["credentials"]["twitter"]["consumer_secret"]
+            assert config["credentials"]["twitter"]["access_token"]
+            assert config["credentials"]["twitter"]["access_token_secret"]
 
-            with open(filename) as f:
-                creds = json.load(f)
-
-                assert creds["twitter"]["consumer_key"]
-                assert creds["twitter"]["consumer_secret"]
-                assert creds["twitter"]["access_token"]
-                assert creds["twitter"]["access_token_secret"]
-
-                return TwitterCredentials(
-                    creds["twitter"]["consumer_key"],
-                    creds["twitter"]["consumer_secret"],
-                    creds["twitter"]["access_token"],
-                    creds["twitter"]["access_token_secret"],
-                )
+            return TwitterCredentials(
+                config["credentials"]["twitter"]["consumer_key"],
+                config["credentials"]["twitter"]["consumer_secret"],
+                config["credentials"]["twitter"]["access_token"],
+                config["credentials"]["twitter"]["access_token_secret"],
+            )
         except AssertionError as e:
             logger.critical(e)
             exit(1)
@@ -57,12 +52,12 @@ class TwitterCredentials:
 
 class TwitterBot:
 
-    hashtags = "\n#woooosh #reddit #memes"
     tweet_limit = 140
 
-    def __init__(self, credentials: TwitterCredentials):
+    def __init__(self, credentials: TwitterCredentials, hashtags=[]):
         self.credentails = credentials
         self.api = self.credentails.api
+        self.hashtags = "\n" + " ".join(hashtags)
 
     def tweet(self, content: str, filename: str):
         logger.info("started posting tweet")

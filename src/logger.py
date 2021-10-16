@@ -27,7 +27,9 @@ logger.addHandler(file)
 stream = logging.StreamHandler()
 stream.setLevel(loglevel)
 stream.setFormatter(
-    logging.Formatter("%(asctime)s %(module)s %(funcName)s %(levelname)s %(message)s")
+    logging.Formatter(
+        "%(asctime)s %(module)s %(funcName)s %(levelname)s %(message)s"
+    )
 )
 logger.addHandler(stream)
 
