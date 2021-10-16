@@ -29,13 +29,18 @@ class SelfBrand:
         while i < len(tweets_ids):
             try:
                 self.api.create_favorite(tweets_ids[i])
+                logger.info("Liked tweet with id {}".format(tweets_ids[i]))
             except tweepy.TwitterServerError as e:
+                logger.error(e)
+            except tweepy.errors.Forbidden as e:
                 logger.error(e)
 
             i += 1
             time.sleep(interval)
 
-    def fetch_tweets_from_hashtag(self, hashtag: str, limit: int = 50) -> List[int]:
+    def fetch_tweets_from_hashtag(
+        self, hashtag: str, limit: int = 50
+    ) -> List[int]:
         """Fetch recent tweet from given hashtag
 
         Args:
