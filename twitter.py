@@ -74,7 +74,9 @@ class TwitterBot:
 
             media_id = self.__upload_media(filename)
             tweet_id = self.__upload_tweet_with_media(content, media_id)
-            logger.info("Tweet posted successfully, tweet id: {}".format(tweet_id))
+            logger.info(
+                "Tweet posted successfully, tweet id: {}".format(tweet_id)
+            )
         except AssertionError as e:
             logger.error("Failed to validate tweet, {}".format(e))
         except tweepy.TwitterServerError as e:
@@ -91,17 +93,19 @@ class TwitterBot:
         """
 
         if len(content) > self.tweet_limit - len(self.hashtags):
-            content = content[: 140 - len(self.hashtags)] + self.hashtags
             logger.warning("Tweet content is trimmed")
+            content = content[: 140 - len(self.hashtags)]
 
-        return content
+        return content + self.hashtags
 
     def __validate_content(self, content):
         assert content and len(content)
         logger.debug("tweet content: {}".format(content))
 
         if len(content) > self.tweet_limit - len(self.hashtags):
-            logger.warning("tweet is too long ({} characters)".format(len(content)))
+            logger.warning(
+                "tweet is too long ({} characters)".format(len(content))
+            )
 
     def __validate_filename(self, filename: str):
         assert filename and len(filename)
@@ -118,7 +122,9 @@ class TwitterBot:
             int: media_id
         """
         media: tweepy.models.Media = self.api.media_upload(filename)
-        logger.debug("Media uploaded successfully, media id: {}".format(media.media_id))
+        logger.debug(
+            "Media uploaded successfully, media id: {}".format(media.media_id)
+        )
 
         return media.media_id
 
@@ -137,7 +143,9 @@ class TwitterBot:
         )
 
         logger.debug(
-            "Tweet content uploaded successfully, tweet id: {}".format(tweet.id)
+            "Tweet content uploaded successfully, tweet id: {}".format(
+                tweet.id
+            )
         )
 
         return tweet.id
