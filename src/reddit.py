@@ -3,15 +3,14 @@
 # Author: ablil <ablil@protonmail.com>
 # created: 2021-10-13
 
-from config import config
 import os
-import requests
 import shutil
-from typing import Deque, List
+from typing import List
 
 import praw
+import requests
 
-from logger import logger
+import logger
 
 
 class RedditCredentials:
@@ -22,38 +21,21 @@ class RedditCredentials:
             user_agent="Mozilla/5.0 (platform; rv:geckoversion) Gecko/geckotrail appname/appversion",
         )
 
-        self.__verify_auth()
-
-    def __verify_auth(self):
+    def verify_credentials(self):
         try:
+            # todo: check official docs for the api
             self.api.subreddit("woooosh").hot(limit=1)
-            logger.info("Reddit api authenticated")
+            logger.logger.info("Reddit credentials are valid")
         except Exception as e:
-            logger.critical("Reddit authentication failed")
-            logger.critical("error msg: {}".format(e))
+            logger.logger.fatal(f"Reddit credentials are invalid: {e}")
             exit(1)
 
-    @staticmethod
-    def read_from_config():
-        try:
-            assert config["credentials"]["reddit"]["client_id"]
-            assert config["credentials"]["reddit"]["client_secret"]
-
-            return RedditCredentials(
-                config["credentials"]["reddit"]["client_id"],
-                config["credentials"]["reddit"]["client_secret"],
-            )
-        except AssertionError as e:
-            logger.critical(e)
-            exit(1)
+    def get_api(self):
+        return self.api
 
 
 class RedditPost:
     def __init__(self, identifier, content, url):
-        assert identifier and len(identifier)
-        assert content and len(content)
-        assert url and len(url)
-
         self.id = identifier
         self.content = content
         self.url = url
@@ -63,25 +45,20 @@ class RedditPost:
         if self.filename and not os.path.exists(self.filename):
             return self.filename
 
-        logger.info("Started download media from {}".format(self.url))
+        logger.logger.debug(f"Downloading {self.url}")
 
         r = requests.get(self.url, stream=True)
 
         if r.status_code == 200:
             r.raw.decode_content = True
-
+            # todo: use temp directory
             filename = os.path.join("/tmp", self.url.split("/")[-1])
             with open(filename, "wb") as f:
                 shutil.copyfileobj(r.raw, f)
                 self.filename = filename
-                logger.debug("Downloaded: {}".format(filename))
-
+                logger.logger.debug(f"Downloaded: {filename}")
         else:
-            logger.error(
-                "download failed with http status code: {}".format(
-                    r.status_code
-                )
-            )
+            logger.logger.error(f"Download failed, status code: {r.status_code}, url: {self.url}")
 
         return self.filename
 
@@ -90,50 +67,20 @@ class RedditPost:
             os.remove(self.filename)
 
 
-class SubredditScrapper:
-    def __init__(self, credentails: RedditCredentials):
-        self.credentials = credentails
-        self.api = self.credentials.api
+class Reddit:
+    def __init__(self, credentials: RedditCredentials):
+        self.credentials = credentials
+        self.api = self.credentials.get_api()
 
-    def fetch_posts(
-        self, subreddit: str = "woooosh", limit: int = 100
-    ) -> List[RedditPost]:
-
-        try:
-            logger.info(
-                "Started fetching {} posts from r/{}".format(limit, subreddit)
-            )
-
-            posts: List[RedditPost] = self.__fetch_posts(subreddit, limit)
-            logger.info("Fetched {} posts".format(len(posts)))
-
-            posts_with_media: List[
-                RedditPost
-            ] = self.__filter_posts_with_media(posts)
-            logger.info(
-                "Filterd {} posts with media".format(len(posts_with_media))
-            )
-
-            return posts_with_media
-        except AssertionError as e:
-            logger.error(e)
-        except praw.exceptions.PRAWException as e:
-            logger.error("Failed to get posts from subreddit, {}".format(e))
-
-        return []
-
-    def __fetch_posts(self, subreddit: str, limit: int) -> List[RedditPost]:
-        assert subreddit and len(subreddit)
-        assert limit and 0 < limit <= 100
+    def fetch_posts(self, subreddit: str, limit: int, only_media=True) -> List[RedditPost]:
+        logger.logger.debug(f"Fetching up to {limit} posts from {subreddit}")
 
         res = self.api.subreddit(subreddit).hot(limit=limit)
         res = map(lambda p: RedditPost(p.id, p.title, p.url), res)
-        return list(res)
 
-    def __filter_posts_with_media(
-        self, posts: List[RedditPost]
-    ) -> List[RedditPost]:
-        assert posts and len(posts)
+        if only_media:
+            logger.logger.debug(f"Filtering only media posts ...")
+            res = list(filter(lambda p: p.url.endswith(".jpg") or p.url.endswith('.png'), res))
 
-        res = filter(lambda p: p.url.endswith(".jpg"), posts)
+        logger.logger.info(f"Total fetched posts {len(res)}")
         return list(res)

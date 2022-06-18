@@ -3,86 +3,53 @@
 # Author: ablil <ablil@protonmail.com>
 # created: 2021-10-13
 
-import threading
 import time
 from typing import List
 
-import reddit
-import twitter
-from branding import SelfBrand
-from config import config
-from logger import logger
+import config
+import logger
+from reddit import Reddit, RedditCredentials, RedditPost
+from twitter import Twitter, TwitterCredentials
 
-
-def run_bot():
-    twitter_credentials = twitter.TwitterCredentials.read_from_config()
-    twitter_bot = twitter.TwitterBot(
-        twitter_credentials, config["bot"]["hashtags"]
-    )
-
-    reddit_credentials = reddit.RedditCredentials.read_from_config()
-    reddit_scrapper = reddit.SubredditScrapper(reddit_credentials)
-
-    posts: List[reddit.RedditPost] = []
-
-    failures_counter = 0
-
-    while failures_counter < 3:
-
-        posts.extend(reddit_scrapper.fetch_posts(config["bot"]["subreddit"]))
-
-        # re-fetch when no posts is available
-        if not len(posts):
-            logger.warning("increase failure counter")
-            failures_counter += 1
-
-            logger.warning("Sleep for 15 min before fetching again")
-            time.sleep(60 * 15)
-            continue
-        else:
-            logger.info("reset failure counter")
-            failures_counter = 0
-
-        # share posts
-        while len(posts):
-            post = posts.pop(0)
-            media_filename = post.download_media()
-
-            twitter_bot.tweet(post.content, media_filename)
-
-            time.sleep(config["bot"]["time_to_post"])
-
-
-def run_branding():
-    twitter_credentials = twitter.TwitterCredentials.read_from_config()
-    branding_bot = SelfBrand(twitter_credentials)
-
-    hashtags = config["branding"]["hashtags"]
-    interval = config["branding"]["time_to_like"]
-
-    for hashtag in hashtags:
-        tweets = branding_bot.fetch_tweets_from_hashtag(hashtag, interval)
-        logger.info(
-            "Fetched {} tweets from hashtag {}".format(len(tweets), hashtag)
-        )
-
-        branding_bot.fav_tweets(tweets)
-        logger.info("Liked all tweet from hashtag {}".format(hashtag))
+posted = []
 
 
 def main():
-    print("Running ...")
+    bot_config = config.load_config('.env')
 
-    branding_bot = threading.Thread(target=run_branding)
-    branding_bot.setDaemon(True)
-    branding_bot.start()
+    reddit_credentials: RedditCredentials = RedditCredentials(bot_config['reddit_client_id'],
+                                                              bot_config['reddit_client_secret'])
+    reddit_credentials.verify_credentials()
 
-    run_bot()
-    print("Finished")
+    twitter_credentials: TwitterCredentials = TwitterCredentials(bot_config['twitter_consumer_key'],
+                                                                 bot_config['twitter_consumer_secret'],
+                                                                 bot_config['twitter_access_token'],
+                                                                 bot_config['twitter_access_token_secret'])
+    twitter_credentials.verify_credentials()
+
+    reddit_client: Reddit = Reddit(reddit_credentials)
+    twitter_client: Twitter = Twitter(twitter_credentials)
+
+    while True:
+        reddit_posts: List[RedditPost] = reddit_client.fetch_posts(bot_config['bot_subreddit'],
+                                                                   int(bot_config['bot_posts_limit']))
+        for post in reddit_posts:
+            if post.id not in posted:
+                downloaded_media: str = post.download_media()
+                tweet_id: str = twitter_client.tweet(post.content, downloaded_media)
+                logger.logger.info(f"Posted tweet: {tweet_id}")
+
+                posted.append(post.id)
+                time.sleep(60 * int(bot_config['bot_frequency']))
+            else:
+                logger.logger.warn(f"Reddit post {post.id} is already posted")
+
+        if len(posted) > 100:
+            posted.clear()
 
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("Stopping ...")
+        pass
