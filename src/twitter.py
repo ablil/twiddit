@@ -28,7 +28,7 @@ class TwitterCredentials:
 class Twitter:
     tweet_limit = 140
 
-    def __init__(self, credentials: TwitterCredentials, hashtags=[]):
+    def __init__(self, credentials: TwitterCredentials, hashtags):
         self.credentials = credentials
         self.api = self.credentials.api
         self.hashtags = "\n" + " ".join(hashtags)
@@ -39,9 +39,8 @@ class Twitter:
             assert content and len(content) > 0
             assert os.path.exists(filename)
 
-            hashtags = ' '.join(['#' + hashtag for hashtag in self.hashtags])
-            content = content[: self.tweet_limit - len(hashtags) - 1]  # 1 for space between content and hashtags
-            content += ' ' + hashtags
+            content = content[: self.tweet_limit - len(self.hashtags) - 1]  # 1 for space between content and hashtags
+            content += ' ' + self.hashtags
 
             # Tweet
             media: tweepy.models.Media = self.api.media_upload(filename)

@@ -27,8 +27,12 @@ def main():
                                                                  bot_config['twitter_access_token_secret'])
     twitter_credentials.verify_credentials()
 
+    hashtags = [hashtag.strip() for hashtag in bot_config['bot_hashtags'].split(',')]
+    if len(hashtags):
+        hashtags = ['#' + hashtag for hashtag in hashtags]
+
     reddit_client: Reddit = Reddit(reddit_credentials)
-    twitter_client: Twitter = Twitter(twitter_credentials)
+    twitter_client: Twitter = Twitter(twitter_credentials, hashtags)
 
     while True:
         reddit_posts: List[RedditPost] = reddit_client.fetch_posts(bot_config['bot_subreddit'],
