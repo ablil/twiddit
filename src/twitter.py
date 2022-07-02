@@ -51,3 +51,7 @@ class Twitter:
             logger.logger.error(f"Failed to validate tweet, content: {content}, filename: {filename}")
         except tweepy.TwitterServerError as e:
             logger.logger.error(f"Failed to tweet: {e}")
+        except tweepy.errors.BadRequest as e:
+            logger.logger.error(f"Failed to tweet: {e}")
+
+        return None

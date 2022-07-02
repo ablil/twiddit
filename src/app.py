@@ -41,10 +41,12 @@ def main():
             if post.id not in posted:
                 downloaded_media: str = post.download_media()
                 tweet_id: str = twitter_client.tweet(post.content, downloaded_media)
-                logger.logger.info(f"Posted tweet: {tweet_id}")
 
-                posted.append(post.id)
-                time.sleep(60 * int(bot_config['bot_frequency']))
+                # save reddit post id to avoid re-posting it again
+                if tweet_id:
+                    logger.logger.info(f"Posted tweet: {tweet_id}")
+                    posted.append(post.id)
+                    time.sleep(60 * int(bot_config['bot_frequency']))
             else:
                 logger.logger.warn(f"Reddit post {post.id} is already posted")
 
